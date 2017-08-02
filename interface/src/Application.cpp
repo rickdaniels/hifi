@@ -253,6 +253,8 @@ static const QString DESKTOP_DISPLAY_PLUGIN_NAME = "Desktop";
 
 static const QString SYSTEM_TABLET = "com.highfidelity.interface.tablet.system";
 
+static bool initThirdPersonCamera = false;
+
 const QHash<QString, Application::AcceptURLMethod> Application::_acceptedExtensions {
     { SVO_EXTENSION, &Application::importSVOFromURL },
     { SVO_JSON_EXTENSION, &Application::importSVOFromURL },
@@ -2303,7 +2305,28 @@ void Application::paintGL() {
                     _myCamera.setPosition(extractTranslation(hmdWorldMat) +
                         myAvatar->getOrientation() * boomOffset);
                 } else {
-                    _myCamera.setOrientation(myAvatar->getHead()->getOrientation());
+					auto cameraRot = _myCamera.getOrientation();
+					
+					// Calculate new camera pitch
+					auto cameraEuler = safeEulerAngles(cameraRot);
+					float newDeltaPitch = myAvatar->getDeltaCameraPitch();
+					auto cameraPitchDeg = PITCH(cameraEuler) * DEGREES_PER_RADIAN;
+					auto testPitch = cameraPitchDeg + newDeltaPitch;
+
+					// Clamp the new pitch between head movement limits
+					if (testPitch < MIN_HEAD_PITCH) {
+						newDeltaPitch += (MIN_HEAD_PITCH - (newDeltaPitch + cameraPitchDeg));
+					}
+					else if (testPitch > MAX_HEAD_PITCH){
+						newDeltaPitch += (MAX_HEAD_PITCH - (newDeltaPitch + cameraPitchDeg));
+					}
+
+					// Use the Yaw from the avatar
+					auto headEuler = safeEulerAngles(myAvatar->getOrientation()) * DEGREES_PER_RADIAN;
+					PITCH(headEuler) = cameraPitchDeg + newDeltaPitch;
+
+					_myCamera.setOrientation(glm::quat(glm::radians(headEuler)));
+
                     if (Menu::getInstance()->isOptionChecked(MenuOption::CenterPlayerInView)) {
                         _myCamera.setPosition(myAvatar->getDefaultEyePosition()
                             + _myCamera.getOrientation() * boomOffset);

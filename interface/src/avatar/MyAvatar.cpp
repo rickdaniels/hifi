@@ -1914,7 +1914,6 @@ bool MyAvatar::shouldRenderHead(const RenderArgs* renderArgs) const {
 }
 
 void MyAvatar::updateOrientation(float deltaTime) {
-
     //  Smoothly rotate body with arrow keys
     float targetSpeed = getDriveKey(YAW) * _yawSpeed;
     if (targetSpeed != 0.0f) {
@@ -2007,6 +2006,7 @@ void MyAvatar::updateOrientation(float deltaTime) {
         }
     }
 
+	_deltaCameraYaw = totalBodyYaw;
     // update body orientation by movement inputs
     glm::quat initialOrientation = getOrientationOutbound();
     setOrientation(getOrientation() * glm::quat(glm::radians(glm::vec3(0.0f, totalBodyYaw, 0.0f))));
@@ -2018,7 +2018,80 @@ void MyAvatar::updateOrientation(float deltaTime) {
         _smoothOrientationTimer = 0.0f;
     }
 
-    getHead()->setBasePitch(getHead()->getBasePitch() + getDriveKey(PITCH) * _pitchSpeed * deltaTime);
+	_deltaCameraPitch = getDriveKey(PITCH) * _pitchSpeed * deltaTime;
+	auto cameraMode = qApp->getCamera().getMode();
+	if (cameraMode != CAMERA_MODE_THIRD_PERSON) {
+		getHead()->setBasePitch(getHead()->getBasePitch() + _deltaCameraPitch);
+	} else {
+		auto entityTree = DependencyManager::get<EntityTreeRenderer>()->getTree();
+		if (entityTree) {
+			QVector<EntityItemID> include{}, ignore{};
+			ViewFrustum viewFrustum;
+			qApp->copyViewFrustum(viewFrustum);
+			auto pickRay = viewFrustum.computePickRay(0.5f, 0.5f); // cast the ray from the middle of the screen
+
+			OctreeElementPointer element;
+			EntityItemPointer intersectedEntity = NULL;
+			float distance;
+			BoxFace face;
+			const bool visibleOnly = false;
+			const bool collidableOnly = true;
+			const bool precisionPicking = true;
+			const auto lockType = Octree::Lock;
+			bool* accurateResult = NULL;
+			glm::vec3 normalOut;
+			
+			bool intersects = entityTree->findRayIntersection(pickRay.origin, pickRay.direction, include, ignore, visibleOnly, collidableOnly, precisionPicking,
+				element, distance, face, normalOut, (void**)&intersectedEntity, lockType, accurateResult);
+			if (intersects && intersectedEntity) {
+				Head* head = getHead();
+				glm::vec3 intersectionOut = pickRay.origin + (pickRay.direction * distance);
+				auto entityIdOut = intersectedEntity->getEntityItemID();
+				auto lookStart = head->getEyePosition();
+				auto lookDir = intersectionOut - lookStart;
+
+				// Transform the look direction to avatar space
+				auto localLookDir = inverse(getOrientation()) * lookDir;
+
+				// project the look direction to the yz plane and find the pitch angle
+				auto pitchDir = glm::normalize(vec3(0.0f, localLookDir.y, localLookDir.z));
+				auto pitchDot = glm::dot(pitchDir, -Vectors::UNIT_Z);
+				auto pitchRightDot = glm::dot(pitchDir, Vectors::UNIT_Y);
+
+				auto pitchAngle2D = acosf(pitchDot) * DEGREES_PER_RADIAN;
+
+				if (pitchRightDot < 0.0f) {
+					pitchAngle2D = -pitchAngle2D;
+				}
+
+				// project the look direction to the xz plane and find the yaw angle
+				auto yawDir = glm::normalize(vec3(localLookDir.x, 0.0f, localLookDir.z));
+				auto yawDot = glm::dot(yawDir, -Vectors::UNIT_Z);
+				auto yawRightDot = glm::dot(yawDir, Vectors::UNIT_X);
+
+
+				auto yawAngle2D = acosf(yawDot) * DEGREES_PER_RADIAN;
+				auto lookDirXZLength = glm::length(vec3(lookDir.x, 0.0f, lookDir.z));
+				
+				// if the look point is behind the avatar or very close to the Y axis, just zero out the head yaw
+				if (yawAngle2D > 90.0f || lookDirXZLength < 0.1f)
+				{
+					yawAngle2D = 0.0f;
+				}
+
+				if (yawRightDot >= 0.0f) {
+					yawAngle2D = -yawAngle2D;
+				}
+
+				head->setBasePitch(pitchAngle2D);
+				head->setBaseYaw(yawAngle2D);
+			} else {
+				getHead()->setBasePitch(getHead()->getBasePitch() + _deltaCameraPitch);
+			}
+		} else {
+			getHead()->setBasePitch(getHead()->getBasePitch() + _deltaCameraPitch);
+		}
+	}
 
     auto headPose = getHeadControllerPoseInAvatarFrame();
     if (headPose.isValid()) {

@@ -141,6 +141,9 @@ class MyAvatar : public Avatar {
     Q_PROPERTY(float hmdRollControlDeadZone READ getHMDRollControlDeadZone WRITE setHMDRollControlDeadZone)
     Q_PROPERTY(float hmdRollControlRate READ getHMDRollControlRate WRITE setHMDRollControlRate)
 
+	Q_PROPERTY(float deltaCameraPitch READ getDeltaCameraPitch WRITE setDeltaCameraPitch)
+	Q_PROPERTY(float deltaCameraYaw READ getDeltaCameraYaw WRITE setDeltaCameraYaw)
+
 public:
     enum DriveKeys {
         TRANSLATE_X = 0,
@@ -352,6 +355,11 @@ public:
     float getHMDRollControlDeadZone() const { return _hmdRollControlDeadZone; }
     void setHMDRollControlRate(float value) { _hmdRollControlRate = value; }
     float getHMDRollControlRate() const { return _hmdRollControlRate; }
+
+	void setDeltaCameraPitch(float value) { _deltaCameraPitch = value; }
+	float getDeltaCameraPitch() const { return _deltaCameraPitch;  }
+	void setDeltaCameraYaw(float value) { _deltaCameraYaw = value; }
+	float getDeltaCameraYaw() const { return _deltaCameraYaw; }
 
     // get/set avatar data
     void saveData();
@@ -727,6 +735,8 @@ private:
     float _hmdRollControlDeadZone { ROLL_CONTROL_DEAD_ZONE_DEFAULT };
     float _hmdRollControlRate { ROLL_CONTROL_RATE_DEFAULT };
     float _lastDrivenSpeed { 0.0f };
+	float _deltaCameraPitch { 0.0f };
+	float _deltaCameraYaw{ 0.0f };
 
     // working copies -- see AvatarData for thread-safe _sensorToWorldMatrixCache, used for outward facing access
     glm::mat4 _sensorToWorldMatrix { glm::mat4() };
