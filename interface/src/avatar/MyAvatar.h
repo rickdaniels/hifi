@@ -43,6 +43,7 @@ enum AudioListenerMode {
     FROM_CAMERA,
     CUSTOM
 };
+
 Q_DECLARE_METATYPE(AudioListenerMode);
 
 class MyAvatar : public Avatar {
@@ -143,6 +144,9 @@ class MyAvatar : public Avatar {
 
 	Q_PROPERTY(float deltaCameraPitch READ getDeltaCameraPitch WRITE setDeltaCameraPitch)
 	Q_PROPERTY(float deltaCameraYaw READ getDeltaCameraYaw WRITE setDeltaCameraYaw)
+
+    const QString DOMINANT_LEFT_HAND = "left";
+    const QString DOMINANT_RIGHT_HAND = "right";
 
 public:
     enum DriveKeys {
@@ -342,6 +346,9 @@ public:
     Q_INVOKABLE bool getClearOverlayWhenMoving() const { return _clearOverlayWhenMoving; }
     Q_INVOKABLE void setClearOverlayWhenMoving(bool on) { _clearOverlayWhenMoving = on; }
 
+    Q_INVOKABLE void setDominantHand(const QString& hand);
+    Q_INVOKABLE QString getDominantHand() const { return _dominantHand; }
+
     Q_INVOKABLE void setHMDLeanRecenterEnabled(bool value) { _hmdLeanRecenterEnabled = value; }
     Q_INVOKABLE bool getHMDLeanRecenterEnabled() const { return _hmdLeanRecenterEnabled; }
 
@@ -432,7 +439,6 @@ public:
     Q_INVOKABLE QString getFullAvatarModelName() const { return _fullAvatarModelName; }
     void resetFullAvatarURL();
 
-
     virtual void setAttachmentData(const QVector<AttachmentData>& attachmentData) override;
 
     MyCharacterController* getCharacterController() { return &_characterController; }
@@ -440,6 +446,7 @@ public:
 
     void updateMotors();
     void prepareForPhysicsSimulation();
+    void nextAttitude(glm::vec3 position, glm::quat orientation); // Can be safely called at any time.
     void harvestResultsFromPhysicsSimulation(float deltaTime);
 
     const QString& getCollisionSoundURL() { return _collisionSoundURL; }
@@ -559,7 +566,6 @@ public:
     Q_INVOKABLE bool isUp(const glm::vec3& direction) { return glm::dot(direction, _worldUpDirection) > 0.0f; }; // true iff direction points up wrt avatar's definition of up.
     Q_INVOKABLE bool isDown(const glm::vec3& direction) { return glm::dot(direction, _worldUpDirection) < 0.0f; };
 
-
 public slots:
     void increaseSize();
     void decreaseSize();
@@ -617,6 +623,7 @@ signals:
     void wentAway();
     void wentActive();
     void skeletonChanged();
+    void dominantHandChanged(const QString& hand);
 
 private:
 
@@ -728,6 +735,7 @@ private:
     QUrl _fstAnimGraphOverrideUrl;
     bool _useSnapTurn { true };
     bool _clearOverlayWhenMoving { true };
+    QString _dominantHand { DOMINANT_RIGHT_HAND };
 
     const float ROLL_CONTROL_DEAD_ZONE_DEFAULT = 8.0f; // deg
     const float ROLL_CONTROL_RATE_DEFAULT = 2.5f; // deg/sec/deg
