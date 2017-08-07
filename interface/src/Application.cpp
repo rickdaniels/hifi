@@ -255,7 +255,6 @@ static const QString DESKTOP_DISPLAY_PLUGIN_NAME = "Desktop";
 
 static const QString SYSTEM_TABLET = "com.highfidelity.interface.tablet.system";
 
-static bool initThirdPersonCamera = false;
 
 const QHash<QString, Application::AcceptURLMethod> Application::_acceptedExtensions {
     { SVO_EXTENSION, &Application::importSVOFromURL },

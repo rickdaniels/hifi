@@ -1963,7 +1963,6 @@ void MyAvatar::updateOrientation(float deltaTime) {
 			if (intersects && intersectedEntity) {
 				Head* head = getHead();
 				glm::vec3 intersectionOut = pickRay.origin + (pickRay.direction * distance);
-				auto entityIdOut = intersectedEntity->getEntityItemID();
 				auto lookStart = head->getEyePosition();
 				auto lookDir = intersectionOut - lookStart;
 
